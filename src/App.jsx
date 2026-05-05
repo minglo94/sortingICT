@@ -16,7 +16,6 @@ import {
 } from 'lucide-react';
 
 const App = () => {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
   const [activeTab, setActiveTab] = useState('learn');
   const [algo, setAlgo] = useState('bubble'); // 'bubble', 'insertion', 'selection', 'merge'
 
@@ -93,15 +92,12 @@ const App = () => {
     const prompt = `目前的陣列是 [${array.join(', ')}]。正在使用 ${algo} 排序進行第 ${currentPass + 1} 輪，比較或掃描相關索引。請用簡短、活潑的語氣解釋當前動作的原因，並告訴學生這對整體排序有什麼意義。限 50 字以內。`;
     
     try {
-      const data = await fetchWithRetry(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-        {
+      const data = await fetchWithRetry('/api/generate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-        }
-      );
-      setAiExplanation(data.candidates?.[0]?.content?.parts?.[0]?.text || "AI 暫時無法回應。");
+          body: JSON.stringify({ prompt, model: 'gemini-2.0-flash' })
+        });
+      setAiExplanation(data.text || "AI 暫時無法回應。");
     } catch (error) {
       setAiExplanation("AI 助手忙碌中，請稍後再試。");
     } finally {
@@ -114,19 +110,13 @@ const App = () => {
     const prompt = `請生成 6 個介於 1 到 50 之間的隨機不重複整數作為「${algo}排序」挑戰題。並請以 JSON 格式返回，包含 'original' (原始數組) 和 'passes' (一個包含 5 個數組的物件，鍵名為 pass1 到 pass5，分別代表每一輪${algo}排序後的結果)。`;
     
     try {
-      const data = await fetchWithRetry(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`,
-        {
+      const data = await fetchWithRetry('/api/generate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { responseMimeType: "application/json" }
-          })
-        }
-      );
+          body: JSON.stringify({ prompt, model: 'gemini-2.5-flash-preview-09-2025', generationConfig: { responseMimeType: 'application/json' } })
+        });
       
-      const res = JSON.parse(data.candidates[0].content.parts[0].text);
+      const res = JSON.parse(data.text);
       setChallengeOriginal(res.original);
       setExpectedAnswers(res.passes);
       setChallengeInputs({
